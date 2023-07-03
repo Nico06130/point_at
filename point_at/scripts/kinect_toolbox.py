@@ -14,6 +14,7 @@ class PointAtNode:
         self.image_sub = rospy.Subscriber('/kinect2/hd/image_color', Image, self.callback)
         self.bridge = CvBridge()
         self.mp_drawing = mp.solutions.drawing_utils
+        self.mp_drawing_styles = mp.solutions.drawing_styles
         self.mp_hands = mp.solutions.hands
 
     def callback(self, req):
