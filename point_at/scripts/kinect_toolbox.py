@@ -105,7 +105,7 @@ class PointAtNode:
             rospy.loginfo("Pas de depth frame")
 
 
-    def are_collinear(point1, point2, point3, tolerance):
+    def are_collinear(self,point1, point2, point3, tolerance):
         """
         Vérifie si trois points sont approximativement collinéaires dans l'espace.
         """
