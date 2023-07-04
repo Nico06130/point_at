@@ -8,14 +8,15 @@ from cv_bridge import CvBridge
 import cv2
 import numpy as np
 from boxes_3D.srv import boxes3D
-import struct
+from yolov8_ros.srv import Yolov8
 
 class PointAtNode:
 
     def __init__(self):
 
         self.image_sub = rospy.Subscriber('/kinect2/hd/image_color', Image, self.image_callback)
-        self.point_cloud_sub = rospy.Subscriber('/kinect2/sd/image_depth', Image, self.image_depth_callback)
+        self.point_at_pub = rospy.Publisher('point_at_frame',Image,queue_size=10)
+        self.point_cloud_sub = rospy.Subscriber('/kinect2/hd/image_depth_rect', Image, self.image_depth_callback)
         self.bridge = CvBridge()
         self.mp_drawing = mp.solutions.drawing_utils
         self.mp_drawing_styles = mp.solutions.drawing_styles
@@ -27,25 +28,35 @@ class PointAtNode:
         self.model_name = "yolov8m.pt"
         self.model_class = []
         
-        #Coordonnees
+        # #Coordonnees
 
-        self.point_index = [0,0,0]
-        self.point_paume = [0,0,0]
-        self.point_objet = [0,0,0]
+        self.x_index = 0
+        self.y_index = 0
+        self.z_index = 0
+        self.x_wrist = 0
+        self.y_wrist = 0
+        self.z_wrist = 0
+        self.x_objet = 0
+        self.y_objet = 0
+        self.z_objet = 0
+
+        self.landmark_coord = [] #2D coord for wrist and index
+        self.point_index = [self.x_index,self.y_index,self.z_index]
+        self.point_paume = [self.x_wrist,self.y_wrist,self.z_wrist  ]
+        self.point_objet = [self.x_objet,self.y_objet,self.z_objet]
 
 
     def image_depth_callback(self,data):
 
         self.image_depth = data
 
-        # #Recuperation de la profondeur de la paume de la main
+        # #Recuperation de la profondeur de la paume et de l'index
 
-        # depth_modified = self.bridge.imgmsg_to_cv2(data)
-        # x = 0
-        # y = 0
-        # z_value = depth_modified[y, x]
+        depth_modified = self.bridge.imgmsg_to_cv2(data,"16UC1")
 
-        # rospy.loginfo("La profondeur de la paume vaut: ",z_value)
+        self.z_index = depth_modified[int(self.y_index),int(self.x_index)]
+        self.z_wrist = depth_modified[int(self.y_wrist),int(self.x_wrist)]
+
 
 
 
@@ -57,7 +68,9 @@ class PointAtNode:
         frame = self.bridge.imgmsg_to_cv2(req, "bgr8")
         image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         h, w, _ = frame.shape
+        #self.get_2D_bboxes()
         self.get_3D_bboxes()
+
 
         with self.mp_hands.Hands(
                 model_complexity=0,
@@ -77,35 +90,99 @@ class PointAtNode:
                         self.mp_drawing_styles.get_default_hand_connections_style()
                     )
 
+                for landmark in [self.mp_hands.HandLandmark.INDEX_FINGER_TIP, self.mp_hands.HandLandmark.WRIST]:
+
+                    self.landmark_coord.append((
+                        hand_landmarks.landmark[landmark].x*w,
+                        hand_landmarks.landmark[landmark].y*h,
+                        )
+                    )
+
+                    self.x_index , self.y_index = self.landmark_coord[0]
+                    self.x_wrist , self.y_wrist = self.landmark_coord[1]
+
+                    rospy.loginfo("Coords de lindex:",self.landmark_coord[0])
+
+                    self.point_index_plan = (self.x_index,self.y_index)
+                    self.point_wrist_plan = (self.x_wrist,self.y_wrist)
+
+                if self.point_index_plan != None and self.point_objet != None :
+
+                    if self.are_collinear_plan(self.point_wrist_plan,self.point_index_plan,self.point_objet_plan,5):
+
+                        rospy.loginfo("C'EST COLINEAIRE!!!!!!!")
 
 
+        self.point_at_pub.publish(self.bridge.cv2_to_imgmsg(frame, "bgr8"))
         #cv2.imshow("Point at", frame)
         #cv2.waitKey(1)
+
 
     
     def get_3D_bboxes(self):
 
-        rospy.loginfo("Entree dans la callback")
+        # Appel du service boxes_3d_service pour recuperer les coordonnes 3D des boundingbpx
+
+        rospy.loginfo("Entree dans la callback d'appel de boxes 3D")
         rospy.wait_for_service('boxes_3d_service')
 
         if self.image_depth != None:
 
             try:
-                rospy.loginfo("Attente du service")
-                get_boxes = rospy.ServiceProxy('boxes_3d_service',boxes3D)
-                
-                bbox = get_boxes(self.model_name,self.model_class,self.flux,self.image_depth).boxes3D
-                rospy.loginfo(bbox)
+                rospy.loginfo("Attente du service boxes 3D")
+
+                get_boxes_espace = rospy.ServiceProxy('boxes_3d_service',boxes3D)             
+                bbox_espace = get_boxes_espace(self.model_name,self.model_class,self.flux,self.image_depth).boxes3D
+
+                for boite in bbox_espace:
+
+                    self.x1_rect = boite.xmin
+                    self.x2_rect = boite.xmax
+                    self.y1_rect = boite.ymin
+                    self.y2_rect = boite.ymax
+
+                    self.x_objet =  (self.x1_rect+ self.x2_rect)/2
+                    self.y_objet = (self.y1_rect + self.y2_rect)/2
+                    self.z_objet = boite.centerz
+
             
             except rospy.ServiceException as e:
 
                 print("Erreur dans l'appel du service: %s"%e)
 
         else:
+
             rospy.loginfo("Pas de depth frame")
 
 
-    def are_collinear(self,point1, point2, point3, tolerance):
+    # def get_2D_bboxes(self):
+
+    #     # Appel du service boxes_3d_service pour recuperer les coordonnes 3D des boundingbpx
+
+    #     rospy.loginfo("Entree dans la callback d'appel de Yolov8")
+    #     rospy.wait_for_service('yolov8_on_unique_frame')
+
+    #     try:
+
+    #         rospy.loginfo("Attente du service de Yolov8")
+
+    #         get_boxes_plan = rospy.ServiceProxy('yolov8_on_unique_frame',Yolov8)               
+    #         bbox_plan = get_boxes_plan(self.model_name,self.model_class,self.flux).boxes
+
+    #         for box in bbox_plan:
+
+    #             self.x_centre = (box.xmin + box.xmax)/2
+    #             self.y_centre = (box.ymin + box.ymax)/2
+
+    #             self.point_objet_plan = (self.x_centre,self.y_centre)
+
+    #         rospy.loginfo(bbox_plan)
+        
+    #     except rospy.ServiceException as e:
+
+    #         print("Erreur dans l'appel du service: %s"%e)
+
+    def are_collinear_espace(self,point1, point2, point3, tolerance):
         """
         Vérifie si trois points sont approximativement collinéaires dans l'espace.
         """
@@ -129,6 +206,24 @@ class PointAtNode:
         else:
             return False
         
+        
+    # def are_collinear_plan(self, point1, point2, point3, tolerance):
+    #     """
+    #     Vérifie si trois points sont approximativement collinéaires dans le plan.
+    #     """
+    #     # Calcul des vecteurs formés par les points
+    #     vector1 = (point2[0] - point1[0], point2[1] - point1[1])
+    #     vector2 = (point3[0] - point2[0], point3[1] - point2[1])
+
+    #     # Calcul du produit en croix des vecteurs (z-component)
+    #     cross_product = vector1[0] * vector2[1] - vector1[1] * vector2[0]
+
+    #     # Vérification de la colinéarité en comparant le produit en croix avec la tolérance
+    #     if abs(cross_product) <= tolerance:
+    #         return True
+    #     else:
+    #         return False
+
 
     # def get_pointed_objects(self):
 
