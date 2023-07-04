@@ -1,1 +1,1 @@
-# point_at using realsense instead of OAK-D
+Package ROS for pointing at object detection
