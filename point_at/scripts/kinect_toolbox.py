@@ -54,133 +54,23 @@ class PointAtNode:
 
         depth_modified = self.bridge.imgmsg_to_cv2(data,"16UC1")
 
-        self.z_index = depth_modified[int(self.y_index),int(self.x_index)]
-        self.z_wrist = depth_modified[int(self.y_wrist),int(self.x_wrist)]
+        if self.y_index != 0 and self.x_index != 0:
 
+            self.z_index = depth_modified[int(self.y_index),int(self.x_index)]
+            self.z_wrist = depth_modified[int(self.y_wrist),int(self.x_wrist)]
+            # self.z_index = depth_modified[int(960),int(540)]
+            rospy.loginfo("Profondeur wrist en m: ",self.z_wrist/100)
 
+        else:
 
-
+            rospy.loginfo("Pas de coordonnées")
 
     def image_callback(self, req):
 
         self.flux = req
 
-        frame = self.bridge.imgmsg_to_cv2(req, "bgr8")
-        image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        h, w, _ = frame.shape
-        #self.get_2D_bboxes()
-        self.get_3D_bboxes()
-
-
-        with self.mp_hands.Hands(
-                model_complexity=0,
-                min_detection_confidence=0.5,
-                min_tracking_confidence=0.5,
-                max_num_hands=1) as hands:
-
-            results = hands.process(image_rgb)
-
-            if results.multi_hand_landmarks:
-                for hand_landmarks in results.multi_hand_landmarks:
-                    self.mp_drawing.draw_landmarks(
-                        frame,
-                        hand_landmarks,
-                        self.mp_hands.HAND_CONNECTIONS,
-                        self.mp_drawing_styles.get_default_hand_landmarks_style(),
-                        self.mp_drawing_styles.get_default_hand_connections_style()
-                    )
-
-                for landmark in [self.mp_hands.HandLandmark.INDEX_FINGER_TIP, self.mp_hands.HandLandmark.WRIST]:
-
-                    self.landmark_coord.append((
-                        hand_landmarks.landmark[landmark].x*w,
-                        hand_landmarks.landmark[landmark].y*h,
-                        )
-                    )
-
-                    self.x_index , self.y_index = self.landmark_coord[0]
-                    self.x_wrist , self.y_wrist = self.landmark_coord[1]
-
-                    rospy.loginfo("Coords de lindex:",self.landmark_coord[0])
-
-                    self.point_index_plan = (self.x_index,self.y_index)
-                    self.point_wrist_plan = (self.x_wrist,self.y_wrist)
-
-                if self.point_index_plan != None and self.point_objet != None :
-
-                    if self.are_collinear_plan(self.point_wrist_plan,self.point_index_plan,self.point_objet_plan,5):
-
-                        rospy.loginfo("C'EST COLINEAIRE!!!!!!!")
-
-
-        self.point_at_pub.publish(self.bridge.cv2_to_imgmsg(frame, "bgr8"))
-        #cv2.imshow("Point at", frame)
-        #cv2.waitKey(1)
-
-
-    
-    def get_3D_bboxes(self):
-
-        # Appel du service boxes_3d_service pour recuperer les coordonnes 3D des boundingbpx
-
-        rospy.loginfo("Entree dans la callback d'appel de boxes 3D")
-        rospy.wait_for_service('boxes_3d_service')
-
-        if self.image_depth != None:
-
-            try:
-                rospy.loginfo("Attente du service boxes 3D")
-
-                get_boxes_espace = rospy.ServiceProxy('boxes_3d_service',boxes3D)             
-                bbox_espace = get_boxes_espace(self.model_name,self.model_class,self.flux,self.image_depth).boxes3D
-
-                for boite in bbox_espace:
-
-                    self.x1_rect = boite.xmin
-                    self.x2_rect = boite.xmax
-                    self.y1_rect = boite.ymin
-                    self.y2_rect = boite.ymax
-
-                    self.x_objet =  (self.x1_rect+ self.x2_rect)/2
-                    self.y_objet = (self.y1_rect + self.y2_rect)/2
-                    self.z_objet = boite.centerz
-
-            
-            except rospy.ServiceException as e:
-
-                print("Erreur dans l'appel du service: %s"%e)
-
-        else:
-
-            rospy.loginfo("Pas de depth frame")
-
-
-    # def get_2D_bboxes(self):
-
-    #     # Appel du service boxes_3d_service pour recuperer les coordonnes 3D des boundingbpx
-
-    #     rospy.loginfo("Entree dans la callback d'appel de Yolov8")
-    #     rospy.wait_for_service('yolov8_on_unique_frame')
-
-    #     try:
-
-    #         rospy.loginfo("Attente du service de Yolov8")
-
-    #         get_boxes_plan = rospy.ServiceProxy('yolov8_on_unique_frame',Yolov8)               
-    #         bbox_plan = get_boxes_plan(self.model_name,self.model_class,self.flux).boxes
-
-    #         for box in bbox_plan:
-
-    #             self.x_centre = (box.xmin + box.xmax)/2
-    #             self.y_centre = (box.ymin + box.ymax)/2
-
-    #             self.point_objet_plan = (self.x_centre,self.y_centre)
-
-    #         rospy.loginfo(bbox_plan)
-        
-    #     except rospy.ServiceException as e:
-
-    #         print("Erreur dans l'appel du service: %s"%e)
+        # self.get_3D_bboxes()
+        self.draw_on_frame(req)
 
     def are_collinear_espace(self,point1, point2, point3, tolerance):
         """
@@ -189,7 +79,7 @@ class PointAtNode:
         # Calcul des vecteurs formés par les points
 
         vector1 = (point2[0] - point1[0], point2[1] - point1[1], point2[2] - point1[2])
-        vector2 = (point3[0] - point1[0], point3[1] - point1[1], point3[2] - point1[2])
+        vector2 = (point3[0] - point2[0], point3[1] - point2[1], point3[2] - point2[2])
 
         # Calcul des produits en croix des vecteurs
         cross_product = (
@@ -205,32 +95,105 @@ class PointAtNode:
             return True
         else:
             return False
-        
-        
-    # def are_collinear_plan(self, point1, point2, point3, tolerance):
+
+    def draw_on_frame(self,image):
+
+        frame = self.bridge.imgmsg_to_cv2(image, "bgr8")
+        image_rgb = frame
+        h, w, _ = frame.shape
+
+        # Appel du service boxes_3d_service pour recuperer les coordonnes 3D des boundingbpx
+
+        rospy.loginfo("Entree dans la callback d'appel de boxes 3D")
+        rospy.wait_for_service('boxes_3d_service')
+
+        if self.image_depth != None:
+
+            try:
+                rospy.loginfo("Attente du service boxes 3D")
+
+                get_boxes_espace = rospy.ServiceProxy('boxes_3d_service',boxes3D)             
+                bbox_espace = get_boxes_espace(self.model_name,self.model_class,self.flux,self.image_depth).boxes3D
+
+        ### Dessiner les boundingbox des objets ###
+
+                for boite in bbox_espace:
+
+                    self.x1_rect = boite.xmin
+                    self.x2_rect = boite.xmax
+                    self.y1_rect = boite.ymin
+                    self.y2_rect = boite.ymax
+
+                    self.x_objet =  (self.x1_rect+ self.x2_rect)/2
+                    self.y_objet = (self.y1_rect + self.y2_rect)/2
+                    self.z_objet = boite.centerz
+
+                    #rospy.loginfo(self.z_objet)
+                    cv2.rectangle(frame, (int(self.x1_rect), int(self.y1_rect)), (int(self.x2_rect), int(self.y2_rect)), (0, 255, 0), 2)
+         
+            except rospy.ServiceException as e:
+
+                print("Erreur dans l'appel du service: %s"%e)
+
+        else:
+
+            rospy.loginfo("Pas de depth frame")
+
+        ### Dessiner les landmarks de la main ###
+
+        with self.mp_hands.Hands(
+                model_complexity=0,
+                min_detection_confidence=0.5,
+                min_tracking_confidence=0.5,
+                max_num_hands=1) as hands:
+
+            results = hands.process(image_rgb)
+
+            if results.multi_hand_landmarks:
+
+                for hand_landmarks in results.multi_hand_landmarks:
+                    self.mp_drawing.draw_landmarks(
+                        frame,
+                        hand_landmarks,
+                        self.mp_hands.HAND_CONNECTIONS,
+                        self.mp_drawing_styles.get_default_hand_landmarks_style(),
+                        self.mp_drawing_styles.get_default_hand_connections_style()
+                    )
+
+                    for landmark in [self.mp_hands.HandLandmark.INDEX_FINGER_TIP, self.mp_hands.HandLandmark.WRIST]:
+
+                        self.landmark_coord.append((
+                            hand_landmarks.landmark[landmark].x*w,
+                            hand_landmarks.landmark[landmark].y*h,
+                            )
+                        )
+
+
+
+                        rospy.loginfo(self.landmark_coord)
+                        cv2.circle(frame,(int(self.landmark_coord[0][0]),int(self.landmark_coord[0][1])),10,(255,0,0),2)
+                
+                    #rospy.loginfo(self.landmark_coord)
+
+                    # rospy.loginfo("Coords de lindex:",self.landmark_coord[0])
+
+        self.point_at_pub.publish(self.bridge.cv2_to_imgmsg(frame, "bgr8"))
+
+
+    # def get_z_landmarks(self,coord):
     #     """
-    #     Vérifie si trois points sont approximativement collinéaires dans le plan.
+    #     Calcul de la profondeur avec le pointcloud
     #     """
-    #     # Calcul des vecteurs formés par les points
-    #     vector1 = (point2[0] - point1[0], point2[1] - point1[1])
-    #     vector2 = (point3[0] - point2[0], point3[1] - point2[1])
+    #     depth_array=self.bridge.imgmsg_to_cv2(self.image_depth,"16UC1")
+    #     z_coord=depth_array[int(coord[0])][int(coord[1])]
+    #     rospy.loginfo(z_coord)
 
-    #     # Calcul du produit en croix des vecteurs (z-component)
-    #     cross_product = vector1[0] * vector2[1] - vector1[1] * vector2[0]
+    #     if z_coord==0:
+    #         z_coord=-1
 
-    #     # Vérification de la colinéarité en comparant le produit en croix avec la tolérance
-    #     if abs(cross_product) <= tolerance:
-    #         return True
-    #     else:
-    #         return False
-
-
-    # def get_pointed_objects(self):
-
-    #     if self.are_collinear(self.point_paume,self.point_index,self.point_objet,1):
-    #         rospy.loginfo("Les points sont coliineaires")
-
+    #     return z_coord
     
+
     def run(self):
 
         rospy.init_node('point_at_detection')
