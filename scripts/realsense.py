@@ -2,34 +2,170 @@
 
 import rospy
 import mediapipe as mp
-#from sensor_msgs.msg import Image
+from sensor_msgs.msg import Image
 from std_msgs.msg import String, Float32
 from cv_bridge import CvBridge
 import cv2
 import pyrealsense2 as rs
 import numpy as np
-import torch
-#import tf2_ros
-#from geometry_msgs.msg import TransformStamped
-from math import sin, pi
+from yolov8_ros.srv import Yolov8
+
+### Python class to detect pointed objects using Realsense camera, Mediapipe for hand tracking and Yolov8 for object detection ###
+
 
 class RealSenseNode:
 
     def __init__(self):
 
-        rospy.init_node('pôint_at_detection')
-        self.label_pub = rospy.Publisher('pointe', String, queue_size=10)
+        rospy.init_node('point_at_detection')
+        self.point_at_pub = rospy.Publisher('point_at_frame',Image,queue_size=1)
         self.bridge = CvBridge()
 
-        self.mp_hands = mp.solutions.hands
+        self.yolo_model_name = "yolov8m.pt" 
+        self.yolo_class = []
 
-        self.model = torch.hub.load('ultralytics/yolov5', 'yolov5s')
+        self.mp_hands = mp.solutions.hands
+        self.mp_drawing = mp.solutions.drawing_utils
+        self.mp_drawing_styles = mp.solutions.drawing_styles
 
         self.pipeline = rs.pipeline()
         self.config = rs.config()
         self.config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
         self.config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
         self.pipeline.start(self.config)
+
+    def mediapipe(self):
+        """
+        Recupere les coordonnes des landmars de la main et les dessine sur la frame  
+        """
+
+        index_finger_landmarks = []
+
+        with self.mp_hands.Hands(
+                model_complexity=0,
+                min_detection_confidence=0.5,
+                min_tracking_confidence=0.5,
+                max_num_hands = 1) as hands:
+
+            while not rospy.is_shutdown():
+
+                # Recuperation du flux couleur de la RealSense ainsi que du flux de profondeur 
+                # pour calculer la coordonnee en z des pixels souhaites
+                frames = self.pipeline.wait_for_frames()        
+                color_frame = frames.get_color_frame()          
+                depth_frame = frames.get_depth_frame()         
+
+                if not color_frame:
+
+                    continue
+
+                color_image = np.asanyarray(color_frame.get_data())
+                image = cv2.flip(color_image, 1)
+                image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                results = hands.process(image_rgb)
+
+                h, w, _ = image.shape
+
+                if results.multi_hand_landmarks:
+
+                    for hand_landmarks in results.multi_hand_landmarks:
+
+                        # Dessin des landmarks sur la frame
+                        for hand_landmarks in results.multi_hand_landmarks:
+                            self.mp_drawing.draw_landmarks(
+                                image_rgb,
+                                hand_landmarks,
+                                self.mp_hands.HAND_CONNECTIONS,
+                                self.mp_drawing_styles.get_default_hand_landmarks_style(),
+                                self.mp_drawing_styles.get_default_hand_connections_style()
+                            )
+                                
+                        # Recuperation des coordonnees normalisees des landmarks du haut et du bas de l'index et
+                        #  calcul de leur profondeur pour avoir une coordonnee en z
+                        for landmark in [self.mp_hands.HandLandmark.INDEX_FINGER_TIP, self.mp_hands.HandLandmark.INDEX_FINGER_DIP]:
+
+                            if 0 < hand_landmarks.landmark[landmark].x < 1:
+                                index_finger_landmarks.append((
+                                    hand_landmarks.landmark[landmark].x,
+                                    hand_landmarks.landmark[landmark].y,
+                                    depth_frame.get_distance(
+                                        int(hand_landmarks.landmark[landmark].x * w),
+                                        int(hand_landmarks.landmark[landmark].y * h)
+                                    )
+                                ))
+
+                        x1_norm, y1_norm,z1 = index_finger_landmarks[0]
+                        x2_norm, y2_norm,z2 = index_finger_landmarks[1]
+
+                        x1,y1 = x1_norm*w, y1_norm*h
+                        x2,y2 = x2_norm*w, y2_norm*h
+
+                        #Coordonnees 3D des landmarks ajustes a la frame
+                        point_index_haut = (x1,y1,z1)
+                        point_index_bas = (x2,y2,z2)
+
+                        #Recuperation des parametres des objets detectes et dessin des bounding box 
+                        image_yolo = self.bridge.cv2_to_imgmsg(image_rgb, "bgr8")
+                        liste_objets_yolo = self.yolo_service(image_yolo)
+
+                        for objet in liste_objets_yolo:
+
+                            classe = objet.bboxclass
+                            id_classe = objet.ID
+                            x1_rect = objet.xmin
+                            x2_rect = objet.xmax
+                            y1_rect = objet.ymin
+                            y2_rect = objet.ymax
+
+                            cv2.rectangle(image_rgb, (int(x1_rect), int(y1_rect)), (int(x2_rect), int(y2_rect)), (0, 255, 0), 2) #dessin des boundingbox
+
+                            x_centre_objet =  (self.x1_rect+ self.x2_rect)/2 
+                            y_centre_objet = (self.y1_rect + self.y2_rect)/2 
+                            z_centre_ojet = depth_frame.get_distance(int(x_centre_objet),int(y_centre_objet))
+                            coord_centre_objet = (x_centre_objet,y_centre_objet,z_centre_ojet)
+
+                            if self.are_collinear(point_index_bas,point_index_haut,coord_centre_objet):
+
+                                cv2.rectangle(image_rgb, (int(x1_rect), int(y1_rect)), (int(x2_rect), int(y2_rect)), (0, 255, 0), -1)
+                                rospy.loginfo("Pointe vers %s, d'ID %i",classe,id_classe)
+
+                else:
+
+                    image_yolo = self.bridge.cv2_to_imgmsg(image_rgb, "bgr8")
+                    liste_objets_yolo = self.yolo_service(image_yolo)
+
+                    for objet in liste_objets_yolo:
+
+                        x1_rect = objet.xmin
+                        x2_rect = objet.xmax
+                        y1_rect = objet.ymin
+                        y2_rect = objet.ymax
+
+                        cv2.rectangle(image_rgb, (int(x1_rect), int(y1_rect)), (int(x2_rect), int(y2_rect)), (0, 255, 0), 2) #dessin des boundingbox
+
+
+            self.point_at_pub.publish(self.bridge.cv2_to_imgmsg(frame, "bgr8"))*
+
+        self.pipeline.stop()
+
+    def yolo_service(self,frame):
+
+        # Appel du service Yolov8 pour recuperer les objets detectes et leurs parametres associes
+
+        rospy.wait_for_service('yolov8_on_unique_frame')
+
+        try:
+
+            rospy.loginfo("Attente du service Yolov8")
+
+            get_boxes_espace = rospy.ServiceProxy('yolov8_on_unique_frame',Yolov8)             
+            bbox_espace = get_boxes_espace(self.yolo_model_name,self.yolo_class,frame).boxes
+
+            return bbox_espace
+
+        except rospy.ServiceException as e:
+
+            print("Erreur dans l'appel du service Yolov8: %s"%e)
 
     def are_collinear(self,point1, point2, point3, tolerance):
         """
@@ -54,107 +190,12 @@ class RealSenseNode:
             return True
         else:
             return False
-
-    def getRealXY(self, x_ref, y_ref, distance, img_w=640, img_h=480, HFovDeg=90, VFovDeg=65):
         
-        HFov = HFovDeg * pi / 180.0  # Horizontal field of view of the RealSense D455
-        VFov = VFovDeg * pi / 180.0
-        #Phi = (HFov / 2.0) * ( (2*neck_x)/self.image_w + 1)  #Angle from the center of the camera to neck_x
-        PhiX = (HFov / 2.0) *  (x_ref - img_w/2) / (img_w/2) #Angle from the center of the camera to neck_x
-        PhiY = (VFov / 2.0) *  (y_ref - img_h/2) / (img_h/2)
-        return (    distance * sin(PhiX)  ,     distance * sin(PhiY)   )
-
-
-    def run(self):
-        
-        rate = rospy.Rate(10)  # 10Hz
-
-        with self.mp_hands.Hands(
-                model_complexity=0,
-                min_detection_confidence=0.5,
-                min_tracking_confidence=0.5,
-                max_num_hands = 1) as hands:
-
-            while not rospy.is_shutdown():
-
-                frames = self.pipeline.wait_for_frames()
-                color_frame = frames.get_color_frame()
-                depth_frame = frames.get_depth_frame()
-
-                if not color_frame:
-
-                    continue
-
-                color_image = np.asanyarray(color_frame.get_data())
-                image = cv2.flip(color_image, 1)
-                image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                results = hands.process(image_rgb)
-                results_yolo = self.model(image)
-
-                h, w, _ = image.shape
-
-                if results.multi_hand_landmarks:
-
-                    for hand_landmarks in results.multi_hand_landmarks:
-
-                        index_finger_landmarks = []
-
-                        for landmark in [self.mp_hands.HandLandmark.INDEX_FINGER_TIP, self.mp_hands.HandLandmark.INDEX_FINGER_DIP]:
-                            index_finger_landmarks.append((
-                                hand_landmarks.landmark[landmark].x,
-                                hand_landmarks.landmark[landmark].y,
-                                depth_frame.get_distance(
-                                    float(hand_landmarks.landmark[landmark].x * w),
-                                    float(hand_landmarks.landmark[landmark].y * h)
-                                )
-                            ))
-
-                        x1_raw, y1_raw,z1 = index_finger_landmarks[0]
-                        x2_raw, y2_raw,z2 = index_finger_landmarks[1]
-
-                        point1 = (x1_raw,y1_raw,z1)
-                        point2 = (x2_raw,y2_raw,z1)
-
-                        
-                        
-                        x1,y1 = x1_raw*w, y1_raw*h
-                        x2,y2 = x2_raw*w, y2_raw*h
-
-                        # cv2.circle(image,(int(x1),int(y1)),10,(255,0,0),2)
-
-                else:
-
-                    point1 = (0,0,0)
-                    point2 = (1,1,1)
-
-                for detection in results_yolo.xyxy[0]:
-
-                    x1_rect, y1_rect, x2_rect, y2_rect, confidence, class_id = detection
-                    label = self.model.names[int(class_id)]
-                    x_milieu = (x1_rect+x2_rect)/2
-                    y_milieu = (y1_rect + y2_rect)/2
-                    z_milieu = depth_frame.get_distance(int(x_milieu), int(y_milieu))
-
-                    x_real, y_real = self.getRealXY(x_milieu, y_milieu, z_milieu, w, h)
-
-                    point3 = (x_real,y_real,z_milieu)
-
-                    coord_milieu = (int(x_milieu),int(y_milieu))
-
-                    if  label == "bottle":
-
-                        if self.are_collinear(point1, point2, point3,10):
-
-                            self.label_pub.publish(label)
-
-            rate.sleep()
-
-     
-        self.pipeline.stop()
 
 if __name__ == '__main__':
+
     try:
         node = RealSenseNode()
-        node.run()
+        node.mediapipe()
     except rospy.ROSInterruptException:
         pass
