@@ -14,6 +14,9 @@ find_package(catkin REQUIRED COMPONENTS
     sensor_msgs
     point_at_msgs
     point_at_srvs
+    yolov8_ros
+    yolov8_ros_msgs
+    yolov8_ros_srvs
 )
 
 

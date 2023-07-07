@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
     std_msgs
     sensor_msgs
     point_at_msgs
+    yolov8_ros_msgs
     message_generation
 )
 
@@ -70,7 +71,7 @@ find_package(catkin REQUIRED COMPONENTS
 
 ###################################
 ## catkin specific configuration ##
-###################################
+#########################point_at_msgs##########
 ## The catkin_package macro generates cmake config files for your package
 ## Declare things to be passed to dependent projects
 ## INCLUDE_DIRS: uncomment this if your package contains header files

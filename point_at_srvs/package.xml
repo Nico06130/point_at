@@ -20,11 +20,13 @@
   <build_depend>rospy</build_depend>
   <build_depend>sensor_msgs</build_depend>
   <build_depend>point_at_msgs</build_depend>
+  <build_depend>yolov8_ros_msgs</build_depend>
   <build_depend>message_runtime</build_depend>
 
   <exec_depend>rospy</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>point_at_msgs</exec_depend>
+  <exec_depend>yolov8_ros_msgs</exec_depend>
   <exec_depend>message_runtime</exec_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
