@@ -5,7 +5,7 @@ from sensor_msgs.msg import Image
 from std_msgs.msg import String, Float32
 import cv2
 import numpy as np
-from point_at_srvs.srv import PointedId
+from point_at_srvs.srv import Pointed
 
 class CallPointAtService:
 
@@ -21,7 +21,7 @@ class CallPointAtService:
 
             rospy.loginfo("Attente du service Point At")
 
-            get_service = rospy.ServiceProxy('point_at__service',PointedId)  
+            get_service = rospy.ServiceProxy('point_at__service',Pointed)  
             id_pointe = get_service().pointed_msg
             rospy.loginfo(id_pointe)
 

@@ -23,7 +23,6 @@
   <build_depend>point_at_srvs</build_depend>
   <build_depend>yolov8_ros</build_depend>
   <build_depend>yolov8_ros_msgs</build_depend>
-  <build_depend>yolov8_ros_srvs</build_depend>
   
   <exec_depend>rospy</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
@@ -33,7 +32,6 @@
   <exec_depend>point_at_srvs</exec_depend>
   <exec_depend>yolov8_ros</exec_depend>
   <exec_depend>yolov8_ros_msgs</exec_depend>
-  <exec_depend>yolov8_ros_srvs</exec_depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->

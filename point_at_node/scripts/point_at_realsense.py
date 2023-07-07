@@ -8,7 +8,7 @@ from cv_bridge import CvBridge
 import cv2
 import pyrealsense2 as rs
 import numpy as np
-from yolov8_ros_srvs.srv import Yolov8
+from yolov8_ros_msgs.srv import Yolov8
 from point_at_srvs.srv import Pointed,PointedResponse
 
 
@@ -116,9 +116,9 @@ class RealSenseNode:
                         image_yolo = self.bridge.cv2_to_imgmsg(image_rgb, "bgr8")
                         liste_objets_yolo = self.yolo_service(image_yolo)
 
-                        for objet in liste_objets_yolo:
+                        for objet in liste_objets_yolo.boxes:
 
-                            classe = objet.bboxclass
+                            classe = objet.bbox_class
                             id_classe = objet.ID
                             x1_rect = objet.xmin
                             x2_rect = objet.xmax
@@ -127,12 +127,12 @@ class RealSenseNode:
 
                             cv2.rectangle(image_rgb, (int(x1_rect), int(y1_rect)), (int(x2_rect), int(y2_rect)), (0, 255, 0), 2) #dessin des boundingbox
 
-                            x_centre_objet =  (self.x1_rect+ self.x2_rect)/2 
-                            y_centre_objet = (self.y1_rect + self.y2_rect)/2 
+                            x_centre_objet =  (x1_rect+ x2_rect)/2 
+                            y_centre_objet = (y1_rect + y2_rect)/2 
                             z_centre_ojet = depth_frame.get_distance(int(x_centre_objet),int(y_centre_objet))
                             coord_centre_objet = (x_centre_objet,y_centre_objet,z_centre_ojet)
 
-                            if self.are_collinear(point_index_bas,point_index_haut,coord_centre_objet):
+                            if self.are_collinear(point_index_bas,point_index_haut,coord_centre_objet,10):
 
                                 cv2.rectangle(image_rgb, (int(x1_rect), int(y1_rect)), (int(x2_rect), int(y2_rect)), (0, 255, 0), -1)
                                 rospy.loginfo("Pointe vers %s, d'ID %i",classe,id_classe)
@@ -143,7 +143,7 @@ class RealSenseNode:
                     image_yolo = self.bridge.cv2_to_imgmsg(image_rgb, "bgr8")
                     liste_objets_yolo = self.yolo_service(image_yolo)
 
-                    for objet in liste_objets_yolo:
+                    for objet in liste_objets_yolo.boxes:
 
                         x1_rect = objet.xmin
                         x2_rect = objet.xmax
@@ -172,7 +172,7 @@ class RealSenseNode:
             get_boxes_espace = rospy.ServiceProxy('yolov8_on_unique_frame',Yolov8)             
             bbox_espace = get_boxes_espace(self.yolo_model_name,self.yolo_class,frame).boxes
 
-            return bbox_espace
+            return bbox_espace  
 
         except rospy.ServiceException as e:
 
