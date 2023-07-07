@@ -7,14 +7,11 @@ import cv2
 import numpy as np
 from point_at_srvs.srv import PointedId
 
-class PointAtNode:
+class CallPointAtService:
 
     def __init__(self):
 
         rospy.init_node("point_at_service_call",anonymous=True)
-        self.model_name=""
-        self.model_class=[0]
-        self.image=Image()
 
     def call(self):
 
@@ -37,10 +34,10 @@ if __name__=="__main__":
 
     if __name__ == '__main__':
 
-        a=PointAtNode()
+        a=CallPointAtService()
         a.call()
 
         while not rospy.is_shutdown():
-            
+
             a.test()
             rospy.sleep(1)

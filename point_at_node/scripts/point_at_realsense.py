@@ -8,7 +8,8 @@ from cv_bridge import CvBridge
 import cv2
 import pyrealsense2 as rs
 import numpy as np
-from yolov8_ros.srv import Yolov8
+from yolov8_ros_srvs.srv import Yolov8
+from point_at_srvs.srv import Pointed,PointedResponse
 
 
 ### Python class to detect pointed objects using Realsense camera, Mediapipe for hand tracking and Yolov8 for object detection ###
@@ -22,13 +23,19 @@ class RealSenseNode:
         self.point_at_pub = rospy.Publisher('point_at_frame',Image,queue_size=1)
         self.bridge = CvBridge()
 
+        #Arguments for calling Yolov8
         self.yolo_model_name = "yolov8m.pt" 
         self.yolo_class = []
 
+        #Server 
+        self.server = rospy.Service('point_at_service',Pointed,self.serviceCallback)
+
+        #Mediapipe init
         self.mp_hands = mp.solutions.hands
         self.mp_drawing = mp.solutions.drawing_utils
         self.mp_drawing_styles = mp.solutions.drawing_styles
 
+        #RealSense init
         self.pipeline = rs.pipeline()
         self.config = rs.config()
         self.config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
@@ -129,6 +136,7 @@ class RealSenseNode:
 
                                 cv2.rectangle(image_rgb, (int(x1_rect), int(y1_rect)), (int(x2_rect), int(y2_rect)), (0, 255, 0), -1)
                                 rospy.loginfo("Pointe vers %s, d'ID %i",classe,id_classe)
+                                self.serviceCallback(id_classe)
 
                 else:
 
@@ -169,6 +177,10 @@ class RealSenseNode:
         except rospy.ServiceException as e:
 
             print("Erreur dans l'appel du service Yolov8: %s"%e)
+
+    def serviceCallback(self,box_id):
+
+        return(PointedResponse(box_id))
 
     def are_collinear(self,point1, point2, point3, tolerance):
         """
