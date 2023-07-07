@@ -10,6 +10,7 @@ import pyrealsense2 as rs
 import numpy as np
 from yolov8_ros.srv import Yolov8
 
+
 ### Python class to detect pointed objects using Realsense camera, Mediapipe for hand tracking and Yolov8 for object detection ###
 
 
@@ -36,7 +37,7 @@ class RealSenseNode:
 
     def mediapipe(self):
         """
-        Recupere les coordonnes des landmars de la main et les dessine sur la frame  
+        Recupere les coordonnes des landmarks de la main et les dessine sur la frame  
         """
 
         index_finger_landmarks = []
@@ -144,13 +145,15 @@ class RealSenseNode:
                         cv2.rectangle(image_rgb, (int(x1_rect), int(y1_rect)), (int(x2_rect), int(y2_rect)), (0, 255, 0), 2) #dessin des boundingbox
 
 
-            self.point_at_pub.publish(self.bridge.cv2_to_imgmsg(frame, "bgr8"))*
+            self.point_at_pub.publish(self.bridge.cv2_to_imgmsg(image_rgb, "bgr8"))
 
         self.pipeline.stop()
 
     def yolo_service(self,frame):
+        """
+        Appel du service Yolov8 pour recuperer les objets detectes et leurs parametres associes
 
-        # Appel du service Yolov8 pour recuperer les objets detectes et leurs parametres associes
+        """
 
         rospy.wait_for_service('yolov8_on_unique_frame')
 
@@ -169,9 +172,9 @@ class RealSenseNode:
 
     def are_collinear(self,point1, point2, point3, tolerance):
         """
-        Vérifie si trois points sont approximativement collinéaires dans l'espace.
+        Verifie si trois points sont approximativement collineaires dans l'espace.
         """
-        # Calcul des vecteurs formés par les points
+        # Calcul des vecteurs formes par les points
         vector1 = (point2[0] - point1[0], point2[1] - point1[1], point2[2] - point1[2])
         vector2 = (point3[0] - point1[0], point3[1] - point1[1], point3[2] - point1[2])
 
@@ -185,7 +188,7 @@ class RealSenseNode:
         # Calcul de la norme du produit en croix
         norm = (cross_product[0] ** 2 + cross_product[1] ** 2 + cross_product[2] ** 2) ** 0.5
 
-        # Vérification de la colinéarité en comparant la norme avec la tolérance
+        # Verification de la colinearite en comparant la norme avec la tolerance
         if norm <= tolerance:
             return True
         else:
