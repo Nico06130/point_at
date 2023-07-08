@@ -102,16 +102,6 @@ class PointAtNode:
 
             return landmarks
         
-                # cv2.rectangle(frame, (int(self.x1_rect), int(self.y1_rect)), (int(self.x2_rect), int(self.y2_rect)), (0, 255, 0), 2)
-
-                # if point_wrist != (0,0,0) and point_index != (0,0,0):
-
-                #     if self.are_collinear_espace(point_wrist,point_index,objet,5) :
-
-                #         rospy.loginfo("Pointe vers:",boite.bbox_class)
-                #         cv2.rectangle(frame, (int(self.x1_rect), int(self.y1_rect)), (int(self.x2_rect), int(self.y2_rect)), (0, 255, 0), -1)
-                    
-
     def myServiceCallback(self,req):
 
 
@@ -163,7 +153,6 @@ class PointAtNode:
 
             rate.sleep()
 
-        #self.point_at_pub.publish(self.bridge.cv2_to_imgmsg(frame, "bgr8"))
 
     def are_collinear_espace(self,point1, point2, point3, tolerance):
         """

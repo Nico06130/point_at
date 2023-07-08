@@ -173,7 +173,7 @@ class RealSenseNode:
         y_coord = objet[1]
         z_coord = objet[2]
 
-        coord.header.frame_id = "/test"
+        coord.header.frame_id = "frame"
         coord.header.stamp = rospy.Time.now()
         coord.pose.position.z = x_coord
         coord.pose.position.x = y_coord
@@ -183,11 +183,11 @@ class RealSenseNode:
         coord.pose.orientation.z = 0.0
         coord.pose.orientation.w = 1.0
 
-        resp = coord
+        x = coord.pose.position.x
         # rospy.loginfo()
 
 
-        return(PointedResponse(resp))
+        return(PointedResponse(coord))
 
     def yolo_service(self,frame,modele,classe):
         """

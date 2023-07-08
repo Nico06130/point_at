@@ -15,7 +15,10 @@ Requirements:
 
 Usage:
 
-In a terminal:        rosrun point_at_node call_point_at_service.py
-In an other terminal: rosrun point_at_node point_at_realsense.py
+In a terminal:        
+
+        rosrun point_at_node call_point_at_service.py
+In an other terminal: 
+        rosrun point_at_node point_at_realsense.py
 
 

@@ -24,9 +24,8 @@ class CallPointAtService:
             rospy.loginfo("Attente du service Point At")
 
             get_service = rospy.ServiceProxy('point_at_service',Pointed)  
-            id_pointe = get_service(self.yolo_model_name,self.yolo_class).pointed_msg
-            # rospy.loginfo(get_service)
-            #rospy.loginfo(id_pointe)
+            pose_detecte = get_service(self.yolo_model_name,self.yolo_class).pointed_msg
+            rospy.loginfo(pose_detecte)
 
         except rospy.ServiceException as e:
 
