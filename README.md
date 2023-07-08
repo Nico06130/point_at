@@ -8,16 +8,17 @@ To do so, hand landmarks are generated using MediaPipe. The 2D coordinates of th
 
 Requirements:
 
--ROS
--mediapipe
--pyrealsense2
--opencv
+    -ROS
+    -mediapipe
+    -pyrealsense2
+    -opencv
 
 Usage:
 
 In a terminal:        
 
         rosrun point_at_node call_point_at_service.py
+
 In an other terminal: 
         rosrun point_at_node point_at_realsense.py
 
