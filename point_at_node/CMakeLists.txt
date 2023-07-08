@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
     cv_bridge
     std_msgs
     sensor_msgs
+    geometry_msgs
     point_at_msgs
     point_at_srvs
     yolov8_ros_msgs

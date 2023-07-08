@@ -2,7 +2,7 @@
 
 import rospy
 from sensor_msgs.msg import Image
-from std_msgs.msg import String, Float32
+from std_msgs.msg import String, Float32, UInt16
 import cv2
 import numpy as np
 from point_at_srvs.srv import Pointed
@@ -12,6 +12,8 @@ class CallPointAtService:
     def __init__(self):
 
         rospy.init_node("point_at_service_call",anonymous=True)
+        self.yolo_model_name = "yolov8m.pt" 
+        self.yolo_class = [39]
 
     def call(self):
 
@@ -21,9 +23,10 @@ class CallPointAtService:
 
             rospy.loginfo("Attente du service Point At")
 
-            get_service = rospy.ServiceProxy('point_at__service',Pointed)  
-            id_pointe = get_service().pointed_msg
-            rospy.loginfo(id_pointe)
+            get_service = rospy.ServiceProxy('point_at_service',Pointed)  
+            id_pointe = get_service(self.yolo_model_name,self.yolo_class).pointed_msg
+            # rospy.loginfo(get_service)
+            #rospy.loginfo(id_pointe)
 
         except rospy.ServiceException as e:
 
@@ -35,9 +38,8 @@ if __name__=="__main__":
     if __name__ == '__main__':
 
         a=CallPointAtService()
-        a.call()
 
         while not rospy.is_shutdown():
 
-            a.test()
+            a.call()
             rospy.sleep(1)

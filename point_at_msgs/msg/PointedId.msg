@@ -1,1 +1,1 @@
-uint16 pointed_msg
+geometry_msgs/PoseStamped pointed_msg

@@ -18,7 +18,8 @@
   <buildtool_depend>catkin</buildtool_depend>
   <build_depend>rospy</build_depend>
   <build_depend>cv_bridge</build_depend>
-  <build_depend>sensor_msgs</build_depend> 
+  <build_depend>geometry_msgs</build_depend> 
+  <build_depend>yolov8_ros_msgs</build_depend>
   <build_depend>point_at_msgs</build_depend>
   <build_depend>point_at_srvs</build_depend>
   <build_depend>yolov8_ros</build_depend>
@@ -28,6 +29,7 @@
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>cv_bridge</exec_depend>
   <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>point_at_msgs</exec_depend>
   <exec_depend>point_at_srvs</exec_depend>
   <exec_depend>yolov8_ros</exec_depend>

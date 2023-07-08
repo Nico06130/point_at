@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
     cv_bridge
     std_msgs
     sensor_msgs
+    yolov8_ros_msgs
     message_generation
 )
 

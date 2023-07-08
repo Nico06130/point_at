@@ -1,2 +1,4 @@
+string model_name
+uint8[] model_class 
 ---
-uint16 pointed_msg
+geometry_msgs/PoseStamped pointed_msg

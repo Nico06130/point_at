@@ -18,6 +18,7 @@ find_package(catkin REQUIRED COMPONENTS
     sensor_msgs
     point_at_msgs
     yolov8_ros_msgs
+    geometry_msgs
     message_generation
 )
 
