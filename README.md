@@ -12,14 +12,22 @@ Requirements:
     -mediapipe
     -pyrealsense2
     -opencv
+    -numpy
+    -yolov8_ros_msgs packkage
+
 
 Usage:
 
 In a terminal:        
 
-        rosrun point_at_node call_point_at_service.py
+    rosrun point_at_node call_point_at_service.py
 
 In an other terminal: 
-        rosrun point_at_node point_at_realsense.py
+
+    rosrun point_at_node point_at_realsense.py
 
 
+Ouputs:
+
+Displays frame with hand detection, bounding boxes and fills the bounding box when the object is pointed in a topic called /point_at_frame
+Service returns PoseStamped() of the pointed object.

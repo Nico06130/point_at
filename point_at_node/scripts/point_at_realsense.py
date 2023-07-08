@@ -22,7 +22,6 @@ class RealSenseNode:
 
         rospy.init_node('point_at_detection')
         self.point_at_pub = rospy.Publisher('point_at_frame',Image,queue_size=1)
-        self.id_detected_pub = rospy.Publisher('id_detected',UInt16,queue_size=1)
         self.bridge = CvBridge()
 
         #Server 
