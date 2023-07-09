@@ -134,9 +134,10 @@ class RealSenseNode:
 
                                     cv2.rectangle(image_rgb, (int(x1_rect), int(y1_rect)), (int(x2_rect), int(y2_rect)), (0, 255, 0), -1)
                                     rospy.loginfo("Pointe vers %s, d'ID %i",classe,id_classe)
-                                    self.id_detected_pub.publish(coord_centre_objet)
                                     coord_centre_objet = (x_centre_objet,y_centre_objet,z_centre_ojet)
-
+                                    self.point_at_pub.publish(self.bridge.cv2_to_imgmsg(image_rgb, "rgb8"))
+                                    return coord_centre_objet
+                                
                     self.point_at_pub.publish(self.bridge.cv2_to_imgmsg(image_rgb, "rgb8"))
                     return coord_centre_objet
                                 

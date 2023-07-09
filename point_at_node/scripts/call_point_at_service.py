@@ -13,7 +13,7 @@ class CallPointAtService:
 
         rospy.init_node("point_at_service_call",anonymous=True)
         self.yolo_model_name = "yolov8m.pt" 
-        self.yolo_class = [39]
+        self.yolo_class = [28]
 
     def call(self):
 
@@ -25,7 +25,7 @@ class CallPointAtService:
 
             get_service = rospy.ServiceProxy('point_at_service',Pointed)  
             pose_detecte = get_service(self.yolo_model_name,self.yolo_class).pointed_msg
-            rospy.loginfo(pose_detecte)
+            #rospy.loginfo(pose_detecte)
 
         except rospy.ServiceException as e:
 
