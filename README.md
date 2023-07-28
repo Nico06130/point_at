@@ -14,7 +14,7 @@ To do so, hand landmarks are generated using MediaPipe. The 2D coordinates of th
     -pyrealsense2
     -opencv
     -numpy
-    -yolov8_ros_msgs packkage
+    -yolov8_ros_msgs package
 
 
 ## Execution
