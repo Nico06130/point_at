@@ -35,7 +35,7 @@ Service returns PoseStamped() of the pointed object.
 
 ![image](https://github.com/Nico06130/point_at/assets/78531005/552adbfc-445f-47a3-8fab-0cd12ab96142)
 
-## Imporvements
+## Improvements
 
 Mediapipe is running on the CPU when using Python. The project can be transferred to C++ in order for Mediapipe to run on the GPU to enhance performances.
 
