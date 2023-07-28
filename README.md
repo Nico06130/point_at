@@ -33,5 +33,6 @@ In an other terminal:
 Displays frame with hand detection, bounding boxes and fills the bounding box when the object is pointed in a topic called /point_at_frame
 Service returns PoseStamped() of the pointed object.
 
-![image](https://github.com/Nico06130/point_at/assets/78531005/348333f4-be49-47b2-8e85-1cd1728f0970)
+![image](https://github.com/Nico06130/point_at/assets/78531005/552adbfc-445f-47a3-8fab-0cd12ab96142)
+
 
