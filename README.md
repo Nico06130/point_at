@@ -1,4 +1,4 @@
-# Point at using Realsense D455
+## Description
 
 This package is used to identify objects pointed by a user in 3D.
 
@@ -6,7 +6,7 @@ It is a ROS service that returns the ID of the corresponding boundingbox  of the
 To do so, hand landmarks are generated using MediaPipe. The 2D coordinates of the top and the bottom keypoint of the index are extracted. Their depth is calculated using the RealSense API. Then a Yolov8 service implemented in the yolov8_ros package is called. This service returns the 2D coordinates of the bounding boxes detected. Then the depth of the center of the boundingboxes are calculated using the RealSense API. Finally, the colinearity of the vectors bottom finger/top finger and top finger/center boundingbox is checked, with an error margin. If it is colinear, then the id of the boundingbox of the object detected is returned.
 
 
-Requirements:
+## Dependencies
 
     -ROS
     -mediapipe
@@ -16,7 +16,7 @@ Requirements:
     -yolov8_ros_msgs packkage
 
 
-Usage:
+## Execution
 
 In a terminal:        
 
@@ -27,7 +27,7 @@ In an other terminal:
     rosrun point_at_node point_at_realsense.py
 
 
-Ouputs:
+## Outputs
 
 Displays frame with hand detection, bounding boxes and fills the bounding box when the object is pointed in a topic called /point_at_frame
 Service returns PoseStamped() of the pointed object.
