@@ -1,0 +1,1 @@
+geometry_msgs/PoseStamped pointed_msg
