@@ -4,6 +4,7 @@ This package is used to identify objects pointed by a user in 3D.
 
 It is a ROS service that returns the ID of the corresponding boundingbox  of the object pointed.
 To do so, hand landmarks are generated using MediaPipe. The 2D coordinates of the top and the bottom keypoint of the index are extracted. Their depth is calculated using the RealSense API. Then a Yolov8 service implemented in the yolov8_ros package is called. This service returns the 2D coordinates of the bounding boxes detected. Then the depth of the center of the boundingboxes are calculated using the RealSense API. Finally, the colinearity of the vectors bottom finger/top finger and top finger/center boundingbox is checked, with an error margin. If it is colinear, then the id of the boundingbox of the object detected is returned.
+
 ## Architecture
 ![image](https://github.com/Nico06130/point_at/assets/78531005/08199b1a-8e1a-47c0-88ac-9b1552b4bb92)
 
