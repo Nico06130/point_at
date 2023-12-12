@@ -1,4 +1,0 @@
-string model_name
-uint8[] model_class 
----
-geometry_msgs/PoseStamped pointed_msg
